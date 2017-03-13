@@ -12,17 +12,21 @@ import com.example.yuhui.ipceventbus.aidl.IEventChanel;
 import com.example.yuhui.ipceventbus.aidl.MessageEvent;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.IPC.RemoteBinderWrapper;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 public class MainActivity extends Activity {
     IEventChanel iEventChanel;
+    RemoteBinderWrapper remoteBinderWrapper;
 
     ServiceConnection conn = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             iEventChanel = IEventChanel.Stub.asInterface(service);
-//            EventBus.getDefault().registerRemoteService(service);
+            remoteBinderWrapper
+                    = new RemoteBinderWrapper(IEventChanel.class.getName(), service);
+            EventBus.getDefault().registerRemoteService(remoteBinderWrapper);
             MessageEvent messageEvent = new MessageEvent("16", "hello");
             EventBus.getDefault().post(messageEvent);
         }
@@ -54,6 +58,7 @@ public class MainActivity extends Activity {
         super.onStop();
         EventBus.getDefault().unregister(this);
         unbindService(conn);
+        EventBus.getDefault().unregisterRemoteService(remoteBinderWrapper);
     }
 
     @Override

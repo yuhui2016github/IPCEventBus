@@ -21,6 +21,8 @@ import android.os.Parcelable;
 import android.os.RemoteException;
 import android.util.Log;
 
+import org.greenrobot.eventbus.IPC.RemoteBinderWrapper;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,7 +60,7 @@ public class EventBus {
     private final Map<Class<?>, CopyOnWriteArrayList<Subscription>> subscriptionsByEventType;
     private final Map<Object, List<Class<?>>> typesBySubscriber;
     private final Map<Class<?>, Object> stickyEvents;
-    private Set<IBinder> removeServiceList = new HashSet<>();
+    private Set<RemoteBinderWrapper> remoteBinderWrapperSet = new HashSet<>();
 
     private final ThreadLocal<PostingThreadState> currentPostingThreadState = new ThreadLocal<PostingThreadState>() {
         @Override
@@ -153,8 +155,8 @@ public class EventBus {
         }
     }
 
-    public void registerRemoteService(IBinder remoteService) {
-        removeServiceList.add(remoteService);
+    public void registerRemoteService(RemoteBinderWrapper remoteBinderWrapper) {
+        remoteBinderWrapperSet.add(remoteBinderWrapper);
     }
 
     // Must be called in synchronized block
@@ -254,6 +256,10 @@ public class EventBus {
         }
     }
 
+    public void unregisterRemoteService(RemoteBinderWrapper remoteBinderWrapper) {
+        remoteBinderWrapperSet.remove(remoteBinderWrapper);
+    }
+
     /**
      * Posts the given event to the event bus.
      */
@@ -271,17 +277,20 @@ public class EventBus {
             try {
                 android.os.Parcel _data = android.os.Parcel.obtain();
                 android.os.Parcel _reply = android.os.Parcel.obtain();
-                _data.writeInterfaceToken("com.example.yuhui.ipceventbus.aidl.IEventChanel");
-                if ((event != null)) {
-                    _data.writeInt(1);
-                    event.writeToParcel(_data, 0);
-                } else {
-                    _data.writeInt(0);
-                }
-                Iterator<IBinder> iterator = removeServiceList.iterator();
+                Iterator<RemoteBinderWrapper> iterator = remoteBinderWrapperSet.iterator();
                 IBinder iEventChanel;
+                RemoteBinderWrapper remoteBinderWrapper;
                 while (iterator.hasNext()) {
-                    iEventChanel = iterator.next();
+                    remoteBinderWrapper = iterator.next();
+                    iEventChanel = remoteBinderWrapper.getiBinder();
+                    _data.writeInterfaceToken(remoteBinderWrapper.getInterfaceName());
+                    if ((event != null)) {
+                        _data.writeInt(1);
+                        event.writeToParcel(_data, 0);
+                    } else {
+                        _data.writeInt(0);
+                    }
+
                     iEventChanel.transact(android.os.IBinder.FIRST_CALL_TRANSACTION + 0, _data, _reply, 0);
                 }
                 while (!eventQueue.isEmpty()) {
