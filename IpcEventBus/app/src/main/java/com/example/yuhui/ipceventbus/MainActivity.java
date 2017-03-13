@@ -22,13 +22,9 @@ public class MainActivity extends Activity {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             iEventChanel = IEventChanel.Stub.asInterface(service);
+//            EventBus.getDefault().registerRemoteService(service);
             MessageEvent messageEvent = new MessageEvent("16", "hello");
-            EventBus.getDefault().post(service, messageEvent);
-//            try {
-//                iEventChanel.postEvent(messageEvent);
-//            } catch (RemoteException e) {
-//                e.printStackTrace();
-//            }
+            EventBus.getDefault().post(messageEvent);
         }
 
         @Override

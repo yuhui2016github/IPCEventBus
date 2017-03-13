@@ -39,9 +39,15 @@ public class RemoteService extends Service {
     }
 
     class LocalBinder extends IEventChanel.Stub {
+
         @Override
         public void postEvent(MessageEvent messageEvent) throws RemoteException {
             EventBus.getDefault().post(messageEvent);
+        }
+
+        @Override
+        public void otherMethod() throws RemoteException {
+
         }
     }
 
@@ -49,4 +55,5 @@ public class RemoteService extends Service {
     public void onMessageEvent(MessageEvent event) {
         Toast.makeText(this, "remote service " + event.toString(), Toast.LENGTH_SHORT).show();
     }
+
 }

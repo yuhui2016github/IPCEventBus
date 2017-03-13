@@ -24,6 +24,8 @@ import android.util.Log;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +58,7 @@ public class EventBus {
     private final Map<Class<?>, CopyOnWriteArrayList<Subscription>> subscriptionsByEventType;
     private final Map<Object, List<Class<?>>> typesBySubscriber;
     private final Map<Class<?>, Object> stickyEvents;
+    private Set<IBinder> removeServiceList = new HashSet<>();
 
     private final ThreadLocal<PostingThreadState> currentPostingThreadState = new ThreadLocal<PostingThreadState>() {
         @Override
@@ -135,7 +138,7 @@ public class EventBus {
     /**
      * Registers the given subscriber to receive events. Subscribers must call {@link #unregister(Object)} once they
      * are no longer interested in receiving events.
-     * <p>
+     * <p/>
      * Subscribers have event handling methods that must be annotated by {@link Subscribe}.
      * The {@link Subscribe} annotation also allows configuration like {@link
      * ThreadMode} and priority.
@@ -148,6 +151,10 @@ public class EventBus {
                 subscribe(subscriber, subscriberMethod);
             }
         }
+    }
+
+    public void registerRemoteService(IBinder remoteService) {
+        removeServiceList.add(remoteService);
     }
 
     // Must be called in synchronized block
@@ -250,7 +257,7 @@ public class EventBus {
     /**
      * Posts the given event to the event bus.
      */
-    public void post(IBinder iEventChanel, Parcelable event) {
+    public void post(Parcelable event) {
         PostingThreadState postingState = currentPostingThreadState.get();
         List<Object> eventQueue = postingState.eventQueue;
         eventQueue.add(event);
@@ -263,13 +270,20 @@ public class EventBus {
             }
             try {
                 android.os.Parcel _data = android.os.Parcel.obtain();
+                android.os.Parcel _reply = android.os.Parcel.obtain();
+                _data.writeInterfaceToken("com.example.yuhui.ipceventbus.aidl.IEventChanel");
                 if ((event != null)) {
                     _data.writeInt(1);
                     event.writeToParcel(_data, 0);
                 } else {
                     _data.writeInt(0);
                 }
-                iEventChanel.transact(0x00000001, _data, null, 0);
+                Iterator<IBinder> iterator = removeServiceList.iterator();
+                IBinder iEventChanel;
+                while (iterator.hasNext()) {
+                    iEventChanel = iterator.next();
+                    iEventChanel.transact(android.os.IBinder.FIRST_CALL_TRANSACTION + 0, _data, _reply, 0);
+                }
                 while (!eventQueue.isEmpty()) {
                     postSingleEvent(eventQueue.remove(0), postingState);
                 }
