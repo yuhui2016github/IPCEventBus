@@ -1,16 +1,41 @@
 package com.example.yuhui.ipceventbus;
 
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.os.IBinder;
 import android.widget.Toast;
+
+import com.example.yuhui.ipceventbus.aidl.IEventChanel;
+import com.example.yuhui.ipceventbus.aidl.MessageEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 public class MainActivity extends Activity {
+    IEventChanel iEventChanel;
+
+    ServiceConnection conn = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            iEventChanel = IEventChanel.Stub.asInterface(service);
+            MessageEvent messageEvent = new MessageEvent("16", "hello");
+            EventBus.getDefault().post(service, messageEvent);
+//            try {
+//                iEventChanel.postEvent(messageEvent);
+//            } catch (RemoteException e) {
+//                e.printStackTrace();
+//            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -18,49 +43,31 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
     }
 
+
     @Override
     protected void onStart() {
         super.onStart();
         EventBus.getDefault().register(this);
+        Intent intent = new Intent();
+        intent.setClass(this, RemoteService.class);
+        bindService(intent, conn, BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         EventBus.getDefault().unregister(this);
+        unbindService(conn);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        EventBus.getDefault().post(new MessageEvent("16", "hello"));
     }
+
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMessageEvent(MessageEvent event) {
-        Toast.makeText(this, event.toString(), Toast.LENGTH_SHORT).show();
-    }
-
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
+        Toast.makeText(this, "Client Activity " + event.toString(), Toast.LENGTH_SHORT).show();
     }
 }
