@@ -46,9 +46,11 @@ public class RemoteService extends Service {
         }
 
         @Override
-        public void otherMethod() throws RemoteException {
+        public void otherMethod(int a, int b) throws RemoteException {
 
         }
+
+
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

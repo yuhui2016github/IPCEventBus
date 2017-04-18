@@ -263,7 +263,8 @@ public class EventBus {
     /**
      * Posts the given event to the event bus.
      */
-    public void post(Parcelable event) {
+    public void post(Object event) {
+
         PostingThreadState postingState = currentPostingThreadState.get();
         List<Object> eventQueue = postingState.eventQueue;
         eventQueue.add(event);
@@ -275,54 +276,31 @@ public class EventBus {
                 throw new EventBusException("Internal error. Abort state was not reset");
             }
             try {
-                android.os.Parcel _data = android.os.Parcel.obtain();
-                android.os.Parcel _reply = android.os.Parcel.obtain();
-                Iterator<RemoteBinderWrapper> iterator = remoteBinderWrapperSet.iterator();
-                IBinder iEventChanel;
-                RemoteBinderWrapper remoteBinderWrapper;
-                while (iterator.hasNext()) {
-                    remoteBinderWrapper = iterator.next();
-                    iEventChanel = remoteBinderWrapper.getiBinder();
-                    _data.writeInterfaceToken(remoteBinderWrapper.getInterfaceName());
-                    if ((event != null)) {
-                        _data.writeInt(1);
-                        event.writeToParcel(_data, 0);
-                    } else {
-                        _data.writeInt(0);
+                if (event instanceof Parcelable) {
+                    Parcelable parcelableEvent = (Parcelable) event;
+                    android.os.Parcel _data = android.os.Parcel.obtain();
+                    android.os.Parcel _reply = android.os.Parcel.obtain();
+                    Iterator<RemoteBinderWrapper> iterator = remoteBinderWrapperSet.iterator();
+                    IBinder iEventChanel;
+                    RemoteBinderWrapper remoteBinderWrapper;
+                    while (iterator.hasNext()) {
+                        remoteBinderWrapper = iterator.next();
+                        iEventChanel = remoteBinderWrapper.getiBinder();
+                        _data.writeInterfaceToken(remoteBinderWrapper.getInterfaceName());
+                        if ((parcelableEvent != null)) {
+                            _data.writeInt(1);
+                            parcelableEvent.writeToParcel(_data, 0);
+                        } else {
+                            _data.writeInt(0);
+                        }
+                        iEventChanel.transact(IBinder.FIRST_CALL_TRANSACTION + 0, _data, _reply, 0);
                     }
-
-                    iEventChanel.transact(android.os.IBinder.FIRST_CALL_TRANSACTION + 0, _data, _reply, 0);
                 }
                 while (!eventQueue.isEmpty()) {
                     postSingleEvent(eventQueue.remove(0), postingState);
                 }
             } catch (RemoteException e) {
                 e.printStackTrace();
-            } finally {
-                postingState.isPosting = false;
-                postingState.isMainThread = false;
-            }
-        }
-    }
-
-    /**
-     * Posts the given event to the event bus.
-     */
-    public void post(Object event) {
-        PostingThreadState postingState = currentPostingThreadState.get();
-        List<Object> eventQueue = postingState.eventQueue;
-        eventQueue.add(event);
-
-        if (!postingState.isPosting) {
-            postingState.isMainThread = Looper.getMainLooper() == Looper.myLooper();
-            postingState.isPosting = true;
-            if (postingState.canceled) {
-                throw new EventBusException("Internal error. Abort state was not reset");
-            }
-            try {
-                while (!eventQueue.isEmpty()) {
-                    postSingleEvent(eventQueue.remove(0), postingState);
-                }
             } finally {
                 postingState.isPosting = false;
                 postingState.isMainThread = false;
